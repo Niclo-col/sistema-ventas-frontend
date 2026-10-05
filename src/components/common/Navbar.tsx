@@ -12,7 +12,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ title, subtitle, onBack, showBack = false }) => {
-  const { user, role, logout, switchRole, isDemo } = useAuth();
+  const { user, role, logout, switchRole } = useAuth();
   const { rate, syncWithBCV, isLoading: isSyncingRate } = useCurrency();
 
   return (
@@ -61,13 +61,8 @@ export const Navbar: React.FC<NavbarProps> = ({ title, subtitle, onBack, showBac
 
         {/* Right: User info, Role switch, Logout */}
         <div className="flex items-center gap-3">
-          {isDemo && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-              <Activity className="w-3 h-3 text-amber-600" /> Modo Simulación
-            </span>
-          )}
-
           {/* Role badge and switcher */}
+
           <div className="flex items-center bg-slate-100 p-1 rounded-xl">
             <button
               onClick={() => switchRole('SELLER')}

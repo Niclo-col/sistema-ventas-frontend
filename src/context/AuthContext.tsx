@@ -1,13 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { AuthService, getStoredToken, isDemoMode } from '../services/api';
+import { AuthService, getStoredToken } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   role: UserRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isDemo: boolean;
   login: (emailOrUser: string, pinOrPass: string) => Promise<void>;
   logout: () => void;
   switchRole: (newRole: UserRole) => void;
@@ -18,7 +17,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isDemo, setIsDemo] = useState<boolean>(false);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -29,7 +27,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const currentUser = await AuthService.getMe();
           if (currentUser) {
             setUser(currentUser);
-            setIsDemo(isDemoMode());
           }
         } catch (e) {
           console.warn('Init auth failed:', e);
@@ -45,7 +42,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await AuthService.login(emailOrUser, pinOrPass);
       setUser(res.user);
-      setIsDemo(isDemoMode());
     } finally {
       setIsLoading(false);
     }
@@ -54,13 +50,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     AuthService.logout();
     setUser(null);
-    setIsDemo(false);
   };
 
   const switchRole = (newRole: UserRole) => {
     const updatedUser: User = {
       id: newRole === 'ADMIN' ? 'usr-admin' : 'usr-seller',
-      email: `${newRole.toLowerCase()}@impresionesluipe.com`,
+      email: newRole === 'ADMIN' ? 'admin@sistema-ventas.dev' : 'seller@sistema-ventas.dev',
       name: newRole === 'ADMIN' ? 'Administrador' : 'Vendedor',
       role: newRole,
       status: 'ACTIVE'
@@ -79,7 +74,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role,
         isAuthenticated,
         isLoading,
-        isDemo,
         login,
         logout,
         switchRole
