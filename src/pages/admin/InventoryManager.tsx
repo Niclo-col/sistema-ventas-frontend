@@ -6,9 +6,9 @@ import {
   Edit2,
   Trash2,
   Package,
-  Barcode,
   Tag,
-  AlertTriangle
+  AlertTriangle,
+  FolderOpen
 } from 'lucide-react';
 import { ProductService, CategoryService } from '../../services/api';
 import { Product, Category } from '../../types';
@@ -46,6 +46,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
       ]);
       setCategories(cats);
       setProducts(prods);
+    } catch (e) {
+      console.warn('Error loading inventory:', e);
     } finally {
       setIsLoading(false);
     }
@@ -80,13 +82,13 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-6">
-      {/* Header matching mockup Page 3 */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
@@ -98,15 +100,15 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
           </button>
           <div>
             <h2 className="text-xl font-black text-slate-900">Inventario</h2>
-            <p className="text-xs text-slate-500">Administre el stock, catálogo y los precios de cada producto</p>
+            <p className="text-xs text-slate-500">Administre el catálogo de productos y precios</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Items totales badge matching mockup */}
+          {/* Items totales badge */}
           <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-xs text-right">
             <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-              Items totales
+              Items en catálogo
             </span>
             <span className="text-xl font-black text-indigo-700">
               {products.length}
@@ -131,12 +133,12 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Buscar por nombre, código de barras o SKU..."
+          placeholder="Buscar producto por nombre o descripción..."
           className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-xs"
         />
       </div>
 
-      {/* Category Pills matching mockup */}
+      {/* Real Category Pills from Endpoint */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
         <button
           onClick={() => setSelectedCategory('all')}
@@ -146,24 +148,27 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
               : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
           }`}
         >
-          ✓ Todos los productos
+          ✓ Todos ({products.length})
         </button>
-        {categories.map(c => (
-          <button
-            key={c.id}
-            onClick={() => setSelectedCategory(c.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              selectedCategory === c.id
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
-            }`}
-          >
-            {c.name}
-          </button>
-        ))}
+        {categories.map(c => {
+          const count = products.filter(p => p.categoryId === c.id).length;
+          return (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCategory(c.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedCategory === c.id
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+              }`}
+            >
+              {c.name} ({count})
+            </button>
+          );
+        })}
       </div>
 
-      {/* Product List matching mockup Page 3 */}
+      {/* Product List without images and without stock */}
       <div className="bg-white rounded-3xl border border-slate-200 divide-y divide-slate-100 shadow-xs overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -171,66 +176,61 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-12 text-slate-400">
-            <Package className="w-10 h-10 stroke-1 mx-auto mb-2 text-slate-300" />
-            <p className="font-semibold text-slate-700 text-sm">No hay productos en esta selección</p>
+            <FolderOpen className="w-10 h-10 stroke-1 mx-auto mb-2 text-slate-300" />
+            <p className="font-semibold text-slate-700 text-sm">No se encontraron productos en esta categoría</p>
             <button
               onClick={handleOpenCreate}
               className="mt-3 text-xs font-bold text-indigo-600 hover:underline cursor-pointer"
             >
-              + Agregar el primer producto
+              + Agregar nuevo producto a la base de datos
             </button>
           </div>
         ) : (
           filteredProducts.map(p => {
-            const priceVes = p.priceUsd * rate;
-            const categoryObj = categories.find(c => c.id === p.categoryId);
+            const price = Number(p.priceUsd) || 0;
+            const priceVes = price * rate;
+            const categoryObj = categories.find(c => c.id === p.categoryId) || p.category;
 
             return (
               <div
                 key={p.id}
-                className="p-4 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
+                className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
               >
-                {/* Left: Thumbnail & Details */}
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
-                        📦
-                      </div>
-                    )}
+                {/* Left: Product Name, Category & Description */}
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <Package className="w-5 h-5" />
                   </div>
 
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-slate-900 text-sm truncate">{p.name}</h3>
-                    <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
-                      {p.barcode && (
-                        <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                          SKU: {p.barcode}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-slate-900 text-sm truncate">{p.name}</h3>
+                      {categoryObj?.name && (
+                        <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                          {categoryObj.name}
                         </span>
                       )}
-                      <span>•</span>
-                      <span className="text-indigo-600 font-medium">{categoryObj?.name || 'General'}</span>
                     </div>
+                    {p.description && (
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        {p.description}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* Center: Stock Units & Price */}
+                {/* Center: Price in USD and Bs */}
                 <div className="text-right shrink-0 px-2">
-                  <span className="text-[11px] font-semibold text-slate-400 block">
-                    {p.stock ?? 10} units
-                  </span>
                   <span className="text-base font-black text-slate-900 block leading-tight">
-                    {formatUSD(p.priceUsd)}
+                    {formatUSD(price)}
                   </span>
-                  <span className="text-[10px] font-medium text-slate-400">
+                  <span className="text-[11px] font-medium text-slate-400">
                     {priceVes.toFixed(2)} Bs
                   </span>
                 </div>
 
                 {/* Right: Actions (Edit & Delete) */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => handleOpenEdit(p)}
                     className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
@@ -252,7 +252,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
         )}
       </div>
 
-      {/* Floating Action Button for Mobile / Quick Create matching mockup */}
+      {/* Floating Action Button for Mobile */}
       <div className="fixed bottom-6 right-6 z-20">
         <button
           onClick={handleOpenCreate}
@@ -281,7 +281,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
             <div>
               <h3 className="font-bold text-slate-900 text-base">¿Eliminar producto?</h3>
               <p className="text-xs text-slate-500 mt-1">
-                ¿Está seguro de eliminar <strong>"{productToDelete.name}"</strong>? Esta acción dará de baja el producto en el catálogo.
+                ¿Está seguro de eliminar <strong>"{productToDelete.name}"</strong>?
               </p>
             </div>
             <div className="flex gap-2 pt-2">

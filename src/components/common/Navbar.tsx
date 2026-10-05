@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, RefreshCw, LogOut, Shield, ShoppingCart, UserCheck, Activity } from 'lucide-react';
+import { ArrowLeft, RefreshCw, LogOut, Shield, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import { LuipeLogo } from './LuipeLogo';
@@ -12,7 +12,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ title, subtitle, onBack, showBack = false }) => {
-  const { user, role, logout, switchRole } = useAuth();
+  const { user, currentViewRole, canSwitchRole, switchViewRole, logout } = useAuth();
   const { rate, syncWithBCV, isLoading: isSyncingRate } = useCurrency();
 
   return (
@@ -59,47 +59,56 @@ export const Navbar: React.FC<NavbarProps> = ({ title, subtitle, onBack, showBac
           </button>
         </div>
 
-        {/* Right: User info, Role switch, Logout */}
+        {/* Right: User info, Role switch (ADMIN ONLY), Logout */}
         <div className="flex items-center gap-3">
-          {/* Role badge and switcher */}
-
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-            <button
-              onClick={() => switchRole('SELLER')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                role === 'SELLER'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Cambiar a vista Vendedor"
-            >
+          {/* Role switcher ONLY visible if the user is an Administrator */}
+          {canSwitchRole ? (
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => switchViewRole('SELLER')}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  currentViewRole === 'SELLER'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Vista Vendedor"
+              >
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Ventas</span>
+              </button>
+              <button
+                onClick={() => switchViewRole('ADMIN')}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  currentViewRole === 'ADMIN'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+                title="Vista Administrador"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Admin</span>
+              </button>
+            </div>
+          ) : (
+            /* If Seller, show clean non-interactive role badge */
+            <span className="px-2.5 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center gap-1.5">
               <ShoppingCart className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Vendedor</span>
-            </button>
-            <button
-              onClick={() => switchRole('ADMIN')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                role === 'ADMIN'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Cambiar a vista Administrador"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Admin</span>
-            </button>
-          </div>
+              <span>Vendedor</span>
+            </span>
+          )}
 
           {/* User profile dropdown / info */}
           <div className="flex items-center gap-2 pl-2">
             <div className="w-8 h-8 rounded-full bg-linear-to-tr from-indigo-600 to-violet-500 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-              {role === 'ADMIN' ? 'A' : 'V'}
+              {user?.role === 'ADMIN' ? 'A' : 'V'}
             </div>
             <div className="hidden sm:block text-left text-xs">
               <div className="font-semibold text-slate-800 leading-tight">
-                {user?.name || (role === 'ADMIN' ? 'Administrador' : 'Vendedor')}
+                {user?.email?.split('@')[0] || (user?.role === 'ADMIN' ? 'Administrador' : 'Vendedor')}
               </div>
-              <div className="text-[10px] text-slate-500 capitalize">{role.toLowerCase()}</div>
+              <div className="text-[10px] text-slate-400 font-mono">
+                {user?.role === 'ADMIN' ? 'Admin Master' : 'Caja Operativa'}
+              </div>
             </div>
           </div>
 

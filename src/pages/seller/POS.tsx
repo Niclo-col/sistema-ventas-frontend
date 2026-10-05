@@ -9,7 +9,7 @@ import {
   CreditCard,
   ShoppingBag,
   Package,
-  Layers
+  Tag
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -29,7 +29,6 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
     itemCount,
     subtotalUsd,
     totalUsd,
-    totalVes,
     addItem,
     removeItem,
     updateQuantity,
@@ -64,7 +63,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
       setCategories(cats);
       setProducts(prods);
     } catch (err) {
-      console.warn('Error loading POS data:', err);
+      console.warn('Error loading POS data from API:', err);
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +74,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
@@ -92,7 +91,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
     <div className="flex flex-col lg:flex-row h-[calc(100vh-65px)] overflow-hidden bg-slate-100">
       {/* Left/Main Column: Catalog & Products */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top bar inside POS matching mockup */}
+        {/* Top bar inside POS (Removed 'registro 400 | John M') */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 sm:px-6 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <button
@@ -104,7 +103,6 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
             </button>
             <div>
               <h2 className="text-base font-bold text-slate-900 leading-tight">Registro de ventas</h2>
-              <p className="text-xs text-slate-500">Registro 400 | John M.</p>
             </div>
           </div>
 
@@ -115,7 +113,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar productos o escanear código..."
+              placeholder="Buscar productos en el catálogo..."
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
             />
             {searchQuery && (
@@ -129,7 +127,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
           </div>
         </div>
 
-        {/* Category Filter Pills (Scrollable) */}
+        {/* Category Filter Pills (Strictly from endpoint) */}
         <div className="bg-white border-b border-slate-200 px-4 py-2.5 sm:px-6 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
           <button
             onClick={() => setSelectedCategory('all')}
@@ -139,24 +137,27 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
                 : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
             }`}
           >
-            Todos
+            Todos ({products.length})
           </button>
-          {categories.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCategory(c.id)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                selectedCategory === c.id
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-              }`}
-            >
-              {c.name}
-            </button>
-          ))}
+          {categories.map(c => {
+            const count = products.filter(p => p.categoryId === c.id).length;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setSelectedCategory(c.id)}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  selectedCategory === c.id
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                }`}
+              >
+                {c.name} ({count})
+              </button>
+            );
+          })}
         </div>
 
-        {/* Product Grid (Scrollable) */}
+        {/* Product Grid (No images, No stock - clean functional POS cards) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
@@ -166,93 +167,82 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
             <div className="flex flex-col items-center justify-center h-64 text-slate-400 space-y-2">
               <Package className="w-12 h-12 stroke-1" />
               <p className="text-sm font-semibold text-slate-600">No se encontraron productos</p>
-              <p className="text-xs">Pruebe con otra búsqueda o seleccione otra categoría</p>
+              <p className="text-xs">Seleccione otra categoría o cree productos en el módulo de inventario</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredProducts.map(product => {
                 const qtyInCart = getItemQuantity(product.id);
-                const priceVes = product.priceUsd * rate;
+                const price = Number(product.priceUsd) || 0;
+                const priceVes = price * rate;
+                const categoryObj = categories.find(c => c.id === product.categoryId) || product.category;
 
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
+                    className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
                   >
-                    {/* Thumbnail Image */}
-                    <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300">
-                          <Package className="w-10 h-10 stroke-1" />
-                        </div>
-                      )}
-                      {/* Barcode badge */}
-                      {product.barcode && (
-                        <span className="absolute top-2 left-2 bg-slate-900/70 backdrop-blur-xs text-white text-[9px] font-mono px-1.5 py-0.5 rounded-md">
-                          {product.barcode}
+                    <div>
+                      {/* Category Tag & Icon */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md truncate">
+                          {categoryObj?.name || 'General'}
                         </span>
+                        <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
+                          <Package className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+
+                      {/* Product Name */}
+                      <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
+                        {product.name}
+                      </h3>
+
+                      {product.description && (
+                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">
+                          {product.description}
+                        </p>
                       )}
                     </div>
 
-                    {/* Content */}
-                    <div className="p-3.5 flex-1 flex flex-col justify-between">
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                       <div>
-                        <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-1">
-                          {product.name}
-                        </h3>
-                        {product.description && (
-                          <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                            {product.description}
-                          </p>
-                        )}
+                        <span className="font-extrabold text-base text-slate-900 block leading-tight">
+                          {formatUSD(price)}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-400">
+                          {priceVes.toFixed(2)} Bs
+                        </span>
                       </div>
 
-                      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <div>
-                          <span className="font-extrabold text-base text-slate-900 block leading-tight">
-                            {formatUSD(product.priceUsd)}
+                      {/* Add button or quantity stepper */}
+                      {qtyInCart > 0 ? (
+                        <div className="flex items-center gap-1.5 bg-indigo-50 p-1 rounded-xl border border-indigo-200">
+                          <button
+                            onClick={() => updateQuantity(product.id, qtyInCart - 1)}
+                            className="w-6 h-6 rounded-lg bg-white text-indigo-700 font-bold flex items-center justify-center shadow-xs hover:bg-indigo-100 cursor-pointer"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="font-bold text-xs text-indigo-900 px-1">
+                            {qtyInCart}
                           </span>
-                          <span className="text-[10px] font-medium text-slate-500">
-                            {priceVes.toFixed(2)} Bs
-                          </span>
-                        </div>
-
-                        {/* Add button or counter */}
-                        {qtyInCart > 0 ? (
-                          <div className="flex items-center gap-1.5 bg-indigo-50 p-1 rounded-xl border border-indigo-200">
-                            <button
-                              onClick={() => updateQuantity(product.id, qtyInCart - 1)}
-                              className="w-6 h-6 rounded-lg bg-white text-indigo-700 font-bold flex items-center justify-center shadow-xs hover:bg-indigo-100 cursor-pointer"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="font-bold text-xs text-indigo-900 px-1">
-                              {qtyInCart}
-                            </span>
-                            <button
-                              onClick={() => addItem(product)}
-                              className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center shadow-xs hover:bg-indigo-700 cursor-pointer"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
                           <button
                             onClick={() => addItem(product)}
-                            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                            className="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center shadow-xs hover:bg-indigo-700 cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add</span>
+                            <Plus className="w-3 h-3" />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => addItem(product)}
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -262,7 +252,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
         </div>
       </div>
 
-      {/* Right Column: Pedido Drawer / Cart (Matching mockup Page 2) */}
+      {/* Right Column: Pedido Drawer / Cart (No images) */}
       <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-slate-200 flex flex-col shrink-0 h-96 lg:h-auto">
         {/* Cart Header */}
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
@@ -276,7 +266,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
         </div>
 
         {/* Cart Item List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
           {cartItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
               <ShoppingBag className="w-12 h-12 stroke-1 mb-2 text-slate-300" />
@@ -286,68 +276,60 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
               </p>
             </div>
           ) : (
-            cartItems.map(({ product, quantity }) => (
-              <div
-                key={product.id}
-                className="flex items-center justify-between gap-3 p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-100 transition-colors"
-              >
-                {/* Thumbnail */}
-                <div className="w-12 h-12 rounded-xl bg-slate-200 overflow-hidden shrink-0">
-                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
-                      ☕
+            cartItems.map(({ product, quantity }) => {
+              const price = Number(product.priceUsd) || 0;
+              return (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between gap-3 p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-100 transition-colors"
+                >
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-slate-800 text-xs truncate">{product.name}</h4>
+                    <div className="text-[11px] text-slate-500 font-medium">
+                      {formatUSD(price)} x {quantity}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-slate-800 text-xs truncate">{product.name}</h4>
-                  <div className="text-[11px] text-slate-500 font-medium">
-                    {formatUSD(product.priceUsd)} x {quantity}
+                  {/* Quantity Controls */}
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
+                    <button
+                      onClick={() => updateQuantity(product.id, quantity - 1)}
+                      className="w-5 h-5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-xs font-bold text-slate-800 w-4 text-center">
+                      {quantity}
+                    </span>
+                    <button
+                      onClick={() => addItem(product)}
+                      className="w-5 h-5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Line Total */}
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-xs text-slate-900 block">
+                      {formatUSD(price * quantity)}
+                    </span>
+                    <button
+                      onClick={() => removeItem(product.id)}
+                      className="text-slate-400 hover:text-rose-500 p-0.5 rounded cursor-pointer transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
-
-                {/* Quantity Controls */}
-                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
-                  <button
-                    onClick={() => updateQuantity(product.id, quantity - 1)}
-                    className="w-5 h-5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
-                  >
-                    <Minus className="w-3 h-3" />
-                  </button>
-                  <span className="text-xs font-bold text-slate-800 w-4 text-center">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={() => addItem(product)}
-                    className="w-5 h-5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {/* Line Total */}
-                <div className="text-right shrink-0">
-                  <span className="font-bold text-xs text-slate-900 block">
-                    {formatUSD(product.priceUsd * quantity)}
-                  </span>
-                  <button
-                    onClick={() => removeItem(product.id)}
-                    className="text-slate-400 hover:text-rose-500 p-0.5 rounded cursor-pointer transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
-        {/* Totals & Checkout Button matching mockup */}
+        {/* Totals & Checkout Button */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between text-slate-500 font-medium">

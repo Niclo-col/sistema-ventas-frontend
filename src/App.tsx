@@ -21,7 +21,7 @@ type SellerView = 'menu' | 'pos' | 'history' | 'prices';
 type AdminView = 'menu' | 'dashboard' | 'inventory' | 'history' | 'settings';
 
 const MainApp: React.FC = () => {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, currentViewRole, switchViewRole } = useAuth();
 
   const [sellerView, setSellerView] = useState<SellerView>('menu');
   const [adminView, setAdminView] = useState<AdminView>('menu');
@@ -30,16 +30,19 @@ const MainApp: React.FC = () => {
     return <Login />;
   }
 
+  // Active role is strictly SELLER if user logged in as SELLER; if ADMIN, can switch views
+  const effectiveRole = role === 'SELLER' ? 'SELLER' : currentViewRole;
+
   // Titles for Navbar
   const getNavbarMeta = () => {
-    if (role === 'SELLER') {
+    if (effectiveRole === 'SELLER') {
       switch (sellerView) {
         case 'pos':
           return { title: 'Punto de Venta', subtitle: 'Catálogo y Registro', showBack: true, onBack: () => setSellerView('menu') };
         case 'history':
           return { title: 'Historial', subtitle: 'Transacciones y Recibos', showBack: true, onBack: () => setSellerView('menu') };
         case 'prices':
-          return { title: 'Listado de Precios', subtitle: 'Inventario de Venta', showBack: true, onBack: () => setSellerView('menu') };
+          return { title: 'Listado de Precios', subtitle: 'Catálogo Oficial', showBack: true, onBack: () => setSellerView('menu') };
         default:
           return { title: 'Panel de Vendedor', subtitle: 'Menú de Operaciones', showBack: false };
       }
@@ -71,7 +74,7 @@ const MainApp: React.FC = () => {
       />
 
       <main className="flex-1">
-        {role === 'SELLER' ? (
+        {effectiveRole === 'SELLER' ? (
           <>
             {sellerView === 'menu' && (
               <SellerMenu onNavigate={setSellerView} />
@@ -103,7 +106,10 @@ const MainApp: React.FC = () => {
             {adminView === 'history' && (
               <SalesHistory
                 onBackToMenu={() => setAdminView('menu')}
-                onNewSale={() => setAdminView('inventory')}
+                onNewSale={() => {
+                  switchViewRole('SELLER');
+                  setSellerView('pos');
+                }}
               />
             )}
             {adminView === 'settings' && (

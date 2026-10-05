@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Package, Barcode, DollarSign } from 'lucide-react';
+import { ArrowLeft, Search, Package, Tag } from 'lucide-react';
 import { ProductService, CategoryService } from '../../services/api';
 import { Product, Category } from '../../types';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -39,7 +39,7 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
@@ -57,14 +57,14 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
           </button>
           <div>
             <h2 className="text-xl font-bold text-slate-900">Listado de Precios</h2>
-            <p className="text-xs text-slate-500">Consulta de inventario, stock y tarifas en divisas y bolívares</p>
+            <p className="text-xs text-slate-500">Tarifas oficiales en divisas y bolívares</p>
           </div>
         </div>
 
         {/* Total items badge matching mockup */}
         <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-xs text-right">
           <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-            Items totales
+            Items en catálogo
           </span>
           <span className="text-xl font-black text-indigo-700">
             {products.length}
@@ -79,12 +79,12 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Buscar por nombre o código de barras..."
+          placeholder="Buscar producto por nombre o descripción..."
           className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-xs"
         />
       </div>
 
-      {/* Category Pills matching mockup */}
+      {/* Real Category Pills from Endpoint */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
         <button
           onClick={() => setSelectedCategory('all')}
@@ -94,21 +94,24 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
               : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
           }`}
         >
-          ✓ Todos los productos
+          ✓ Todos ({products.length})
         </button>
-        {categories.map(c => (
-          <button
-            key={c.id}
-            onClick={() => setSelectedCategory(c.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              selectedCategory === c.id
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
-            }`}
-          >
-            {c.name}
-          </button>
-        ))}
+        {categories.map(c => {
+          const count = products.filter(p => p.categoryId === c.id).length;
+          return (
+            <button
+              key={c.id}
+              onClick={() => setSelectedCategory(c.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedCategory === c.id
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+              }`}
+            >
+              {c.name} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Section Title */}
@@ -117,7 +120,7 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
         <span className="text-slate-400">Tasa de cambio: {rate.toFixed(2)} Bs/$</span>
       </div>
 
-      {/* Product List matching mockup Page 3 */}
+      {/* Product List without stock and without images */}
       <div className="bg-white rounded-3xl border border-slate-200 divide-y divide-slate-100 shadow-xs overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -130,43 +133,42 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
           </div>
         ) : (
           filteredProducts.map(p => {
-            const priceVes = p.priceUsd * rate;
-            const categoryObj = categories.find(c => c.id === p.categoryId);
+            const price = Number(p.priceUsd) || 0;
+            const priceVes = price * rate;
+            const categoryObj = categories.find(c => c.id === p.categoryId) || p.category;
 
             return (
               <div
                 key={p.id}
-                className="p-4 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
+                className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-4"
               >
-                {/* Left: Thumbnail & Details */}
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">
-                        📦
-                      </div>
-                    )}
+                {/* Left: Product Details */}
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <Package className="w-5 h-5" />
                   </div>
 
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-slate-900 text-sm truncate">{p.name}</h3>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                      {p.barcode && <span>SKU: {p.barcode}</span>}
-                      <span>•</span>
-                      <span>{categoryObj?.name || 'General'}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-slate-900 text-sm truncate">{p.name}</h3>
+                      {categoryObj?.name && (
+                        <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                          {categoryObj.name}
+                        </span>
+                      )}
                     </div>
+                    {p.description && (
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                        {p.description}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* Right: Stock Units & Price */}
+                {/* Right: Price */}
                 <div className="text-right shrink-0">
-                  <span className="text-[11px] font-semibold text-slate-400 block">
-                    {p.stock ?? 10} units
-                  </span>
                   <span className="text-base font-black text-indigo-700 block leading-tight">
-                    {formatUSD(p.priceUsd)}
+                    {formatUSD(price)}
                   </span>
                   <span className="text-[10px] font-medium text-slate-400">
                     {priceVes.toFixed(2)} Bs
@@ -178,9 +180,9 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
         )}
       </div>
 
-      {/* Informative notice for sellers */}
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-800 text-center font-medium">
-        💡 Vista de sólo lectura para vendedores. La creación, edición y eliminación de productos está restringida al Administrador.
+      {/* Notice for sellers */}
+      <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-500 text-center font-medium">
+        💡 Vista de sólo lectura para vendedores.
       </div>
     </div>
   );

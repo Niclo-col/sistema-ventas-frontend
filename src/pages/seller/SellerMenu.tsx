@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, History, Tag, LogOut, ChevronRight, UserCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCurrency } from '../../context/CurrencyContext';
+import { StatsService } from '../../services/api';
 
 interface SellerMenuProps {
   onNavigate: (view: 'menu' | 'pos' | 'history' | 'prices') => void;
@@ -9,7 +10,26 @@ interface SellerMenuProps {
 
 export const SellerMenu: React.FC<SellerMenuProps> = ({ onNavigate }) => {
   const { user, logout } = useAuth();
-  const { rate } = useCurrency();
+  const { rate, formatUSD, formatVES } = useCurrency();
+  const [balance, setBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState<boolean>(true);
+
+  useEffect(() => {
+    loadDailyBalance();
+  }, []);
+
+  const loadDailyBalance = async () => {
+    setIsLoadingBalance(true);
+    try {
+      // Balance total en caja corresponde a los ingresos del día reportados por el endpoint
+      const todayStats = await StatsService.getSummary('today');
+      setBalance(todayStats.totalRevenueUsd);
+    } catch (e) {
+      console.warn('Error fetching daily box balance:', e);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
 
   return (
     <div className="max-w-xl mx-auto px-4 py-8 sm:py-12 flex flex-col items-center">
@@ -19,17 +39,20 @@ export const SellerMenu: React.FC<SellerMenuProps> = ({ onNavigate }) => {
           <UserCircle className="w-16 h-16 text-indigo-700/80 stroke-1" />
         </div>
         <h2 className="text-xl font-bold text-slate-800">
-          {user?.name || 'Vendedor'}
+          {user?.email?.split('@')[0] || 'Vendedor'}
         </h2>
         <span className="text-xs text-slate-400 font-medium">Turno de Caja Activo</span>
       </div>
 
       {/* Balance and Rate Cards matching mockup */}
       <div className="w-full grid grid-cols-2 gap-4 mb-8">
-        {/* Balance total en caja */}
+        {/* Balance total en caja from Endpoint */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col items-center text-center">
           <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            $24,42
+            {isLoadingBalance ? '...' : formatUSD(balance)}
+          </span>
+          <span className="text-[10px] text-slate-400 font-semibold mt-0.5">
+            {formatVES(balance)}
           </span>
           <span className="text-[11px] font-semibold text-slate-400 mt-1 uppercase tracking-wider">
             Balance total en caja
@@ -37,12 +60,12 @@ export const SellerMenu: React.FC<SellerMenuProps> = ({ onNavigate }) => {
         </div>
 
         {/* Tasa BCV */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col items-center text-center">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col items-center text-center justify-center">
           <span className="text-sm sm:text-base font-bold text-indigo-700 break-all leading-tight">
             $1 USD = {rate.toFixed(4)} Bs
           </span>
           <span className="text-[11px] font-semibold text-slate-400 mt-2 uppercase tracking-wider">
-            Tasa BCV
+            Tasa Oficial BCV
           </span>
         </div>
       </div>
@@ -105,7 +128,7 @@ export const SellerMenu: React.FC<SellerMenuProps> = ({ onNavigate }) => {
                 Ver listado de precios
               </span>
               <span className="text-xs text-slate-400">
-                Consulta de inventario y stock disponible
+                Consulta de catálogo y precios vigentes
               </span>
             </div>
           </div>
@@ -113,7 +136,7 @@ export const SellerMenu: React.FC<SellerMenuProps> = ({ onNavigate }) => {
         </button>
       </div>
 
-      {/* Cerrar sesión link matching mockup */}
+      {/* Cerrar sesión link */}
       <button
         onClick={logout}
         className="text-xs font-semibold text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-1.5 cursor-pointer py-2 px-4 rounded-xl hover:bg-rose-50"

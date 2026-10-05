@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, Barcode, Tag, DollarSign, Package } from 'lucide-react';
+import { X, Save, AlertCircle, DollarSign, Tag, FileText } from 'lucide-react';
 import { Product, Category } from '../../types';
 import { CategoryService, ProductService } from '../../services/api';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -17,20 +17,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
-  const [barcode, setBarcode] = useState('');
-  const [stock, setStock] = useState('10');
   const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    CategoryService.getAll().then(cats => {
-      setCategories(cats);
-      if (cats.length > 0 && !categoryId) {
-        setCategoryId(cats[0].id);
-      }
-    });
+    if (isOpen) {
+      CategoryService.getAll().then(cats => {
+        setCategories(cats);
+        if (cats.length > 0 && !categoryId) {
+          setCategoryId(product ? product.categoryId : cats[0].id);
+        }
+      });
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -38,17 +37,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
       setName(product.name);
       setCategoryId(product.categoryId);
       setPriceUsd(product.priceUsd.toString());
-      setBarcode(product.barcode || '');
-      setStock((product.stock ?? 10).toString());
       setDescription(product.description || '');
-      setImageUrl(product.imageUrl || '');
     } else {
       setName('');
       setPriceUsd('');
-      setBarcode(`SKU-${Math.floor(1000 + Math.random() * 9000)}`);
-      setStock('20');
       setDescription('');
-      setImageUrl('https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60');
     }
     setErrorMsg('');
   }, [product, isOpen]);
@@ -61,8 +54,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
       setErrorMsg('El nombre del producto es obligatorio.');
       return;
     }
+    if (!categoryId) {
+      setErrorMsg('Debe seleccionar una categoría.');
+      return;
+    }
     const parsedPrice = parseFloat(priceUsd);
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
       setErrorMsg('Ingrese un precio en USD válido.');
       return;
     }
@@ -75,21 +72,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
         await ProductService.update(product.id, {
           name: name.trim(),
           categoryId,
-          priceUsd: parsedPrice,
-          barcode: barcode.trim(),
-          stock: parseInt(stock, 10) || 0,
-          description: description.trim(),
-          imageUrl: imageUrl.trim()
+          priceUsd: String(parsedPrice),
+          description: description.trim() || undefined
         });
       } else {
         await ProductService.create({
-          name: name.trim(),
           categoryId,
-          priceUsd: parsedPrice,
-          barcode: barcode.trim(),
-          stock: parseInt(stock, 10) || 0,
-          description: description.trim(),
-          imageUrl: imageUrl.trim()
+          name: name.trim(),
+          priceUsd: String(parsedPrice),
+          description: description.trim() || undefined
         });
       }
       onSaved();
@@ -114,7 +105,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
               {product ? 'Editar Producto' : 'Agregar Nuevo Producto'}
             </h2>
             <p className="text-xs text-slate-500">
-              {product ? 'Modifique los atributos y precios del artículo' : 'Ingrese los datos del nuevo producto para el inventario'}
+              {product ? 'Modifique los atributos y precio del artículo' : 'Ingrese los datos del nuevo producto según el catálogo'}
             </p>
           </div>
           <button
@@ -144,49 +135,36 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Ej: Galletas Club Social, Caramel Macchiato..."
+              placeholder="Ej: Caramel Macchiato, Croissant de mantequilla..."
               className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          {/* Category & Barcode */}
+          {/* Category & Price USD */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
-                Categoría *
+              <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider flex items-center gap-1">
+                <Tag className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Categoría *</span>
               </label>
-              <div className="relative">
-                <select
-                  value={categoryId}
-                  onChange={e => setCategoryId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                >
-                  {categories.map(c => (
+              <select
+                value={categoryId}
+                onChange={e => setCategoryId(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-sm font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              >
+                {categories.length === 0 ? (
+                  <option value="">Cargando categorías...</option>
+                ) : (
+                  categories.map(c => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
-                  ))}
-                </select>
-              </div>
+                  ))
+                )}
+              </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider flex items-center gap-1">
-                <Barcode className="w-3.5 h-3.5 text-slate-500" />
-                <span>Código de Barras / SKU</span>
-              </label>
-              <input
-                type="text"
-                value={barcode}
-                onChange={e => setBarcode(e.target.value)}
-                placeholder="Ej: KS-34-KIK"
-                className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          {/* Price USD & Stock */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider flex items-center gap-1">
                 <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
@@ -199,7 +177,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
                 <input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   required
                   value={priceUsd}
                   onChange={e => setPriceUsd(e.target.value)}
@@ -208,51 +186,23 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
                 />
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Equivalente en Bs: <span className="font-semibold text-slate-700">{priceVes.toFixed(2)} Bs</span>
+                Equivalente BCV: <span className="font-semibold text-slate-700">{priceVes.toFixed(2)} Bs</span>
               </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider flex items-center gap-1">
-                <Package className="w-3.5 h-3.5 text-slate-500" />
-                <span>Stock / Unidades</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={stock}
-                onChange={e => setStock(e.target.value)}
-                placeholder="10"
-                className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-sm text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-              />
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
-              Descripción Corta
+            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider flex items-center gap-1">
+              <FileText className="w-3.5 h-3.5 text-slate-400" />
+              <span>Descripción (Opcional)</span>
             </label>
             <textarea
-              rows={2}
+              rows={3}
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Ingredientes, presentación o detalles del producto"
-              className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Image URL */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
-              URL de Imagen (Opcional)
-            </label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full px-3.5 py-2 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              placeholder="Detalles o especificaciones del producto..."
+              className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 

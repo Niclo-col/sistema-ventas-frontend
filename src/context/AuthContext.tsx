@@ -4,18 +4,21 @@ import { AuthService, getStoredToken } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
-  role: UserRole;
+  role: UserRole; // Real role of the logged in user
+  currentViewRole: UserRole; // Active view (ADMIN can switch to SELLER view)
+  canSwitchRole: boolean; // Only true if user is ADMIN
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (emailOrUser: string, pinOrPass: string) => Promise<void>;
   logout: () => void;
-  switchRole: (newRole: UserRole) => void;
+  switchViewRole: (newRole: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [currentViewRole, setCurrentViewRole] = useState<UserRole>('SELLER');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -27,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const currentUser = await AuthService.getMe();
           if (currentUser) {
             setUser(currentUser);
+            setCurrentViewRole(currentUser.role);
           }
         } catch (e) {
           console.warn('Init auth failed:', e);
@@ -42,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await AuthService.login(emailOrUser, pinOrPass);
       setUser(res.user);
+      setCurrentViewRole(res.user.role);
     } finally {
       setIsLoading(false);
     }
@@ -50,21 +55,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     AuthService.logout();
     setUser(null);
+    setCurrentViewRole('SELLER');
   };
 
-  const switchRole = (newRole: UserRole) => {
-    const updatedUser: User = {
-      id: newRole === 'ADMIN' ? 'usr-admin' : 'usr-seller',
-      email: newRole === 'ADMIN' ? 'admin@sistema-ventas.dev' : 'seller@sistema-ventas.dev',
-      name: newRole === 'ADMIN' ? 'Administrador' : 'Vendedor',
-      role: newRole,
-      status: 'ACTIVE'
-    };
-    setUser(updatedUser);
-    localStorage.setItem('luipe_current_user', JSON.stringify(updatedUser));
+  const switchViewRole = (newRole: UserRole) => {
+    // Only administrators can switch between views
+    if (user?.role !== 'ADMIN') return;
+    setCurrentViewRole(newRole);
   };
 
   const role = user?.role || 'SELLER';
+  const canSwitchRole = user?.role === 'ADMIN';
   const isAuthenticated = !!user;
 
   return (
@@ -72,11 +73,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         role,
+        currentViewRole,
+        canSwitchRole,
         isAuthenticated,
         isLoading,
         login,
         logout,
-        switchRole
+        switchViewRole
       }}
     >
       {children}

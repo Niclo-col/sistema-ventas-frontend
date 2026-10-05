@@ -80,20 +80,24 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onClose }) =>
               <span>Cant. / Descripción</span>
               <span>Total</span>
             </div>
-            {order.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-start text-[11px]">
-                <div className="pr-2">
-                  <span className="font-bold">{item.quantity}x</span>{' '}
-                  <span>{item.product?.name || `Producto #${idx + 1}`}</span>
-                  <div className="text-[10px] text-slate-400">
-                    @ {formatUSD(item.priceUsd || item.product?.priceUsd || 0)}
+            {order.items.map((item, idx) => {
+              const unitPrice = Number(item.unitPriceUsdSnapshot || item.priceUsd || item.product?.priceUsd || 0);
+              const lineTotal = Number(item.subtotalUsd || unitPrice * item.quantity);
+              return (
+                <div key={idx} className="flex justify-between items-start text-[11px]">
+                  <div className="pr-2">
+                    <span className="font-bold">{item.quantity}x</span>{' '}
+                    <span>{item.productNameSnapshot || item.product?.name || `Producto #${idx + 1}`}</span>
+                    <div className="text-[10px] text-slate-400">
+                      @ {formatUSD(unitPrice)}
+                    </div>
                   </div>
+                  <span className="font-semibold">
+                    {formatUSD(lineTotal)}
+                  </span>
                 </div>
-                <span className="font-semibold">
-                  {formatUSD((item.priceUsd || item.product?.priceUsd || 0) * item.quantity)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Totals */}

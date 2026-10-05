@@ -74,8 +74,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       order.items = items.map(i => ({
         productId: i.product.id,
         product: i.product,
+        productNameSnapshot: i.product.name,
         quantity: i.quantity,
-        priceUsd: i.product.priceUsd
+        priceUsd: Number(i.product.priceUsd)
       }));
 
       clearCart();

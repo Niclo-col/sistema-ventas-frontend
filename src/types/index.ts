@@ -15,6 +15,8 @@ export interface Category {
   description?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   productCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Product {
@@ -25,9 +27,9 @@ export interface Product {
   description?: string;
   priceUsd: number;
   barcode?: string;
-  stock?: number;
-  imageUrl?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CartItem {
@@ -37,11 +39,16 @@ export interface CartItem {
 
 export interface OrderItem {
   id?: string;
+  orderId?: string;
   productId: string;
-  product?: Product;
+  productNameSnapshot?: string;
+  categoryIdSnapshot?: string;
+  categoryNameSnapshot?: string;
+  unitPriceUsdSnapshot?: string | number;
   quantity: number;
-  priceUsd: number;
-  subtotalUsd?: number;
+  subtotalUsd?: string | number;
+  product?: Product;
+  priceUsd?: number;
 }
 
 export interface Order {
@@ -49,13 +56,13 @@ export interface Order {
   orderNumber?: string;
   userId?: string;
   userName?: string;
-  customerId?: string;
+  customerId?: string | null;
   customerName?: string;
   items: OrderItem[];
   totalUsd: number;
   totalVes: number;
   exchangeRate: number;
-  paymentMethod: 'CASH' | 'CARD';
+  paymentMethod?: 'CASH' | 'CARD';
   amountReceivedUsd?: number;
   amountReceivedVes?: number;
   changeGivenUsd?: number;
@@ -83,7 +90,7 @@ export interface StatsSummary {
 }
 
 export interface PeriodStat {
-  period: string; // e.g. "Lun", "Mar", "2026-10-01"
+  period: string; // ISO date or formatted day/week
   revenueUsd: number;
   ordersCount: number;
 }
