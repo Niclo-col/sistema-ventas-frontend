@@ -18,7 +18,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onClose }) =>
 
   const formattedDate = new Date(order.createdAt).toLocaleString('es-VE', {
     dateStyle: 'medium',
-    timeStyle: 'short'
+    timeStyle: 'short',
+    timeZone: 'America/Caracas'
   });
 
   return (
