@@ -177,10 +177,10 @@ export const SalesHistory: React.FC<SalesHistoryProps> = ({ onBackToMenu, onNewS
           filteredOrders.map(order => {
             const dateObj = new Date(order.createdAt);
             const timeStr = !isNaN(dateObj.getTime())
-              ? dateObj.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+              ? dateObj.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Caracas' })
               : '';
             const dateFormatted = !isNaN(dateObj.getTime())
-              ? dateObj.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' })
+              ? dateObj.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' ,timeZone: 'America/Caracas'})
               : '';
 
             return (
