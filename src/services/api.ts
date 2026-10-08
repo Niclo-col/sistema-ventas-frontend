@@ -253,14 +253,15 @@ export const ProductService = {
     return mapProduct(p.product || p);
   },
 
-  async create(product: { categoryId: string; name: string; description?: string; priceUsd: number | string }): Promise<Product> {
+  async create(product: { categoryId: string; name: string; description?: string; priceUsd: number | string; barcode?: string }): Promise<Product> {
     const res = await apiFetch<any>('/api/products', {
       method: 'POST',
       body: JSON.stringify({
         categoryId: product.categoryId,
         name: product.name.trim(),
         description: product.description?.trim() || undefined,
-        priceUsd: String(product.priceUsd)
+        priceUsd: String(product.priceUsd),
+        barcode: product.barcode?.trim() || undefined
       })
     });
     const p = res.product || res;
@@ -271,16 +272,18 @@ export const ProductService = {
       name: p.name,
       description: p.description,
       priceUsd: parseFloat(p.priceUsd) || 0,
+      barcode: p.barcode || undefined,
       status: p.status || 'ACTIVE'
     };
   },
 
-  async update(id: string, patch: { categoryId?: string; name?: string; description?: string; priceUsd?: number | string }): Promise<Product> {
+  async update(id: string, patch: { categoryId?: string; name?: string; description?: string; priceUsd?: number | string; barcode?: string | null }): Promise<Product> {
     const body: any = {};
     if (patch.categoryId) body.categoryId = patch.categoryId;
     if (patch.name) body.name = patch.name.trim();
-    if (patch.description !== undefined) body.description = patch.description.trim();
+    if (patch.description !== undefined) body.description = patch.description?.trim() || null;
     if (patch.priceUsd !== undefined) body.priceUsd = String(patch.priceUsd);
+    if (patch.barcode !== undefined) body.barcode = patch.barcode?.trim() || null;
 
     const res = await apiFetch<any>(`/api/products/${id}`, {
       method: 'PATCH',
@@ -294,6 +297,7 @@ export const ProductService = {
       name: p.name,
       description: p.description,
       priceUsd: parseFloat(p.priceUsd) || 0,
+      barcode: p.barcode || undefined,
       status: p.status || 'ACTIVE'
     };
   },

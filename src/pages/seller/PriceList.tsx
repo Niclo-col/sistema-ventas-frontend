@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Package, Tag } from 'lucide-react';
+import { ArrowLeft, Search, Package, Tag, Barcode } from 'lucide-react';
 import { ProductService, CategoryService } from '../../services/api';
 import { Product, Category } from '../../types';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -39,7 +39,8 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
@@ -79,7 +80,7 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Buscar producto por nombre o descripción..."
+          placeholder="Buscar producto por nombre, descripción o código de barras..."
           className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 shadow-xs"
         />
       </div>
@@ -154,6 +155,12 @@ export const PriceList: React.FC<PriceListProps> = ({ onBackToMenu }) => {
                       {categoryObj?.name && (
                         <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
                           {categoryObj.name}
+                        </span>
+                      )}
+                      {p.barcode && (
+                        <span className="text-[10px] font-mono font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Barcode className="w-3 h-3 text-slate-400" />
+                          {p.barcode}
                         </span>
                       )}
                     </div>

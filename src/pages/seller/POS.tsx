@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   ShoppingCart,
@@ -9,7 +9,8 @@ import {
   CreditCard,
   ShoppingBag,
   Package,
-  Tag
+  Tag,
+  Barcode
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -43,6 +44,7 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Modals state
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -74,9 +76,42 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
     const matchesSearch =
       !searchQuery.trim() ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
+
+  // Handler for Enter / barcode scanner trigger
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const query = searchQuery.trim().toLowerCase();
+      if (!query) return;
+
+      // 1. Direct exact match by barcode
+      const exactBarcode = products.find(p => p.barcode?.toLowerCase() === query);
+      if (exactBarcode) {
+        addItem(exactBarcode);
+        setSearchQuery('');
+        return;
+      }
+
+      // 2. Direct exact match by name
+      const exactName = products.find(p => p.name.toLowerCase() === query);
+      if (exactName) {
+        addItem(exactName);
+        setSearchQuery('');
+        return;
+      }
+
+      // 3. If there is a single product in filtered products, add it
+      if (filteredProducts.length === 1) {
+        addItem(filteredProducts[0]);
+        setSearchQuery('');
+        return;
+      }
+    }
+  };
 
   const handleSaleSuccess = (order: Order) => {
     setIsCheckoutOpen(false);
@@ -106,14 +141,16 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
             </div>
           </div>
 
-          {/* Search box */}
+          {/* Search box with barcode scanner support */}
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Barcode className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar productos en el catálogo..."
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Buscar por nombre o escanear código de barras..."
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
             />
             {searchQuery && (
@@ -197,6 +234,13 @@ export const POS: React.FC<POSProps> = ({ onBackToMenu }) => {
                       <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
                         {product.name}
                       </h3>
+
+                      {product.barcode && (
+                        <div className="flex items-center gap-1 text-[10px] font-mono text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md mt-1 w-fit">
+                          <Barcode className="w-3 h-3 text-slate-400" />
+                          <span>{product.barcode}</span>
+                        </div>
+                      )}
 
                       {product.description && (
                         <p className="text-[11px] text-slate-400 line-clamp-2 mt-1">

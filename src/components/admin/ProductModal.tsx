@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, DollarSign, Tag, FileText } from 'lucide-react';
+import { X, Save, AlertCircle, DollarSign, Tag, FileText, Barcode } from 'lucide-react';
 import { Product, Category } from '../../types';
 import { CategoryService, ProductService } from '../../services/api';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -17,6 +17,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
+  const [barcode, setBarcode] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -37,10 +38,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
       setName(product.name);
       setCategoryId(product.categoryId);
       setPriceUsd(product.priceUsd.toString());
+      setBarcode(product.barcode || '');
       setDescription(product.description || '');
     } else {
       setName('');
       setPriceUsd('');
+      setBarcode('');
       setDescription('');
     }
     setErrorMsg('');
@@ -73,6 +76,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
           name: name.trim(),
           categoryId,
           priceUsd: String(parsedPrice),
+          barcode: barcode.trim() || null,
           description: description.trim() || undefined
         });
       } else {
@@ -80,6 +84,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
           categoryId,
           name: name.trim(),
           priceUsd: String(parsedPrice),
+          barcode: barcode.trim() || undefined,
           description: description.trim() || undefined
         });
       }
@@ -105,7 +110,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
               {product ? 'Editar Producto' : 'Agregar Nuevo Producto'}
             </h2>
             <p className="text-xs text-slate-500">
-              {product ? 'Modifique los atributos y precio del artículo' : 'Ingrese los datos del nuevo producto según el catálogo'}
+              {product ? 'Modifique los atributos, código de barras y precio del artículo' : 'Ingrese los datos del nuevo producto según el catálogo'}
             </p>
           </div>
           <button
@@ -135,9 +140,38 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, product, onC
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Ej: Caramel Macchiato, Croissant de mantequilla..."
+              placeholder="Ej: Caramel Macchiato, Aceite de cocina..."
               className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             />
+          </div>
+
+          {/* Barcode field - optimized for barcode scanner paste/trigger */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider flex items-center gap-1.5">
+              <Barcode className="w-4 h-4 text-indigo-600" />
+              <span>Código de Barras (Opcional)</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={barcode}
+                onChange={e => setBarcode(e.target.value)}
+                placeholder="Seleccione aquí y accione el gatillo del lector..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-slate-300 rounded-xl text-sm font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              />
+              {barcode && (
+                <button
+                  type="button"
+                  onClick={() => setBarcode('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              💡 Seleccione esta casilla y use el lector de código de barras para capturarlo automáticamente.
+            </p>
           </div>
 
           {/* Category & Price USD */}
