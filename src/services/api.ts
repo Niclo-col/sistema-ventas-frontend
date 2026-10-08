@@ -211,7 +211,6 @@ export const ProductService = {
       }
     };
   },
-};
 
   async getById(id: string): Promise<Product> {
     const p = await apiFetch<any>(`/api/products/${id}`);
