@@ -22,6 +22,7 @@ interface InventoryManagerProps {
 export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu }) => {
   const { formatUSD, formatVES, rate } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState<number>(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -40,12 +41,14 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [cats, prods] = await Promise.all([
-        CategoryService.getAll(),
-        ProductService.getAll()
-      ]);
+      const [cats, productResponse] = await Promise.all([
+      CategoryService.getAll(),
+      ProductService.getAll()
+    ]);
+
       setCategories(cats);
-      setProducts(prods);
+      setProducts(productResponse.data);
+      setTotalProducts(productResponse.meta.total);
     } catch (e) {
       console.warn('Error loading inventory:', e);
     } finally {
@@ -111,8 +114,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
               Items en catálogo
             </span>
             <span className="text-xl font-black text-indigo-700">
-              {products.length}
-            </span>
+              {totalProducts}
+          </span>
           </div>
 
           {/* + Agregar producto button */}
