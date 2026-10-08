@@ -45,12 +45,12 @@ const loadData = async () => {
   try {
     const [cats, productResponse] = await Promise.all([
       CategoryService.getAll(),
-      ProductService.getPaginated({ page: 1, pageSize: 100 })
+      ProductService.getAll()
     ]);
 
     setCategories(cats);
-    setProducts(productResponse.data);
-    setTotalProducts(productResponse.meta.total);
+    setProducts(productResponse);
+    setTotalProducts(productResponse.length);
   } catch (e) {
     console.warn('Error loading inventory:', e);
   } finally {
