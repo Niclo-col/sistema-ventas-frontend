@@ -38,23 +38,25 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
     loadData();
   }, []);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const [cats, productResponse] = await Promise.all([
+  
+const loadData = async () => {
+  setIsLoading(true);
+
+  try {
+    const [cats, productResponse] = await Promise.all([
       CategoryService.getAll(),
-      ProductService.getAll()
+      ProductService.getAll({ page: 1, pageSize: 20 })
     ]);
 
-      setCategories(cats);
-      setProducts(productResponse.data);
-      setTotalProducts(productResponse.meta.total);
-    } catch (e) {
-      console.warn('Error loading inventory:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setCategories(cats);
+    setProducts(productResponse.data);
+    setTotalProducts(productResponse.meta.total);
+  } catch (e) {
+    console.warn('Error loading inventory:', e);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleOpenCreate = () => {
     setEditingProduct(null);
@@ -114,8 +116,8 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onBackToMenu
               Items en catálogo
             </span>
             <span className="text-xl font-black text-indigo-700">
-              {totalProducts}
-          </span>
+        {totalProducts}
+      </span>
           </div>
 
           {/* + Agregar producto button */}
