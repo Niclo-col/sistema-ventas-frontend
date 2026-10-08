@@ -45,7 +45,7 @@ const loadData = async () => {
   try {
     const [cats, productResponse] = await Promise.all([
       CategoryService.getAll(),
-      ProductService.getAll({ page: 1, pageSize: 20 })
+      ProductService.getPaginated({ page: 1, pageSize: 100 })
     ]);
 
     setCategories(cats);
@@ -74,6 +74,7 @@ const loadData = async () => {
     try {
       await ProductService.delete(productToDelete.id);
       setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
+      setTotalProducts(prev => Math.max(0, prev - 1));
       setProductToDelete(null);
     } catch (e) {
       console.warn('Error deleting product:', e);

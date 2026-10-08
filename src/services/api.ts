@@ -151,20 +151,106 @@ export const AuthService = {
 // Products Service -> Real Backend API
 // -------------------------------------------------------------
 
-export interface PaginatedResponse<T> { data: T[]; meta: { page: number; pageSize: number; total: number; totalPages: number; }; } export const ProductService = { // Mantiene la compatibilidad con los componentes existentes async getAll(params?: { categoryId?: string; search?: string; status?: string; page?: number; pageSize?: number; }): Promise<Product[]> { const response = await this.getPaginated(params); return response.data; }, // Nuevo método para obtener productos y metadatos async getPaginated(params?: { categoryId?: string; search?: string; status?: string; page?: number; pageSize?: number; }): Promise<PaginatedResponse<Product>> { const q = new URLSearchParams(); if (params?.categoryId && params.categoryId !== "all") { q.set("categoryId", params.categoryId); } if (params?.search) q.set("search", params.search); if (params?.status) q.set("status", params.status); q.set("page", (params?.page ?? 1).toString()); q.set("pageSize", (params?.pageSize ?? 20).toString()); const res = await apiFetch<any>( `/api/products?${q.toString()}` ); const rawList: any[] = Array.isArray(res) ? res : res.data || res.products || []; const data: Product[] = rawList.map((p) => ({ id: p.id, categoryId: p.categoryId, category: p.category, name: p.name, description: p.description, priceUsd: parseFloat(p.priceUsd) || 0, barcode: p.barcode || undefined, status: p.status || "ACTIVE", createdAt: p.createdAt, updatedAt: p.updatedAt, })); return { data, meta: res.meta || { page: params?.page ?? 1, pageSize: params?.pageSize ?? data.length, total: data.length, totalPages: 1, }, }; }, };,
+export interface ProductListParams {
+  categoryId?: string;
+  search?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+function mapProduct(p: any): Product {
+  return {
+    id: p.id,
+    categoryId: p.categoryId,
+    category: p.category,
+    name: p.name,
+    description: p.description,
+    priceUsd: parseFloat(p.priceUsd) || 0,
+    barcode: p.barcode || undefined,
+    status: p.status || 'ACTIVE',
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+}
+
+function parseProductListMeta(
+  res: any,
+  data: Product[],
+  params?: ProductListParams
+): PaginatedResponse<Product>['meta'] {
+  const rawMeta = res?.meta || res?.pagination || {};
+  const page = Number(rawMeta.page ?? rawMeta.currentPage ?? params?.page ?? 1);
+  const pageSize = Number(rawMeta.pageSize ?? rawMeta.limit ?? params?.pageSize ?? data.length ?? 100);
+  const total = Number(
+    rawMeta.total ??
+    rawMeta.totalItems ??
+    rawMeta.count ??
+    res?.total ??
+    res?.totalItems ??
+    res?.count ??
+    data.length
+  );
+  const totalPages = Number(
+    rawMeta.totalPages ??
+    rawMeta.lastPage ??
+    (pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1)
+  );
+
+  return { page, pageSize, total, totalPages };
+}
+
+export const ProductService = {
+  async getPaginated(params?: ProductListParams): Promise<PaginatedResponse<Product>> {
+    const q = new URLSearchParams();
+    if (params?.categoryId && params.categoryId !== 'all') {
+      q.set('categoryId', params.categoryId);
+    }
+    if (params?.search) q.set('search', params.search);
+    if (params?.status) q.set('status', params.status);
+    q.set('page', String(params?.page ?? 1));
+    q.set('pageSize', String(params?.pageSize ?? 100));
+
+    const res = await apiFetch<any>(`/api/products?${q.toString()}`);
+    const rawList: any[] = Array.isArray(res) ? res : res.data || res.products || [];
+    const data = rawList.map(mapProduct);
+
+    return {
+      data,
+      meta: parseProductListMeta(res, data, params),
+    };
+  },
+
+  async getAll(params?: ProductListParams): Promise<Product[]> {
+    const wantsSinglePage = params?.page != null || params?.pageSize != null;
+    if (wantsSinglePage) {
+      const response = await this.getPaginated(params);
+      return response.data;
+    }
+
+    const pageSize = 100;
+    const first = await this.getPaginated({ ...params, page: 1, pageSize });
+    const all = [...first.data];
+    for (let page = 2; page <= first.meta.totalPages; page++) {
+      const next = await this.getPaginated({ ...params, page, pageSize });
+      all.push(...next.data);
+    }
+    return all;
+  },
 
   async getById(id: string): Promise<Product> {
     const p = await apiFetch<any>(`/api/products/${id}`);
-    return {
-      id: p.id,
-      categoryId: p.categoryId,
-      category: p.category,
-      name: p.name,
-      description: p.description,
-      priceUsd: parseFloat(p.priceUsd) || 0,
-      barcode: p.barcode || undefined,
-      status: p.status || 'ACTIVE'
-    };
+    return mapProduct(p.product || p);
   },
 
   async create(product: { categoryId: string; name: string; description?: string; priceUsd: number | string }): Promise<Product> {
