@@ -151,66 +151,7 @@ export const AuthService = {
 // Products Service -> Real Backend API
 // -------------------------------------------------------------
 
-export interface PaginatedResponse<T> {
-  data: T[];
-  meta: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-export const ProductService = {
-  async getAll(params?: {
-    categoryId?: string;
-    search?: string;
-    status?: string;
-    page?: number;
-    pageSize?: number;
-  }): Promise<PaginatedResponse<Product>> {
-    const q = new URLSearchParams();
-
-    if (params?.categoryId && params.categoryId !== 'all') {
-      q.set('categoryId', params.categoryId);
-    }
-    if (params?.search) q.set('search', params.search);
-    if (params?.status) q.set('status', params.status);
-
-    q.set('page', (params?.page || 1).toString());
-    q.set('pageSize', (params?.pageSize || 20).toString());
-
-    const res = await apiFetch<any>(
-      `/api/products${q.toString() ? `?${q.toString()}` : ''}`
-    );
-
-    const rawList: any[] = Array.isArray(res)
-      ? res
-      : res.data || res.products || [];
-
-    const data: Product[] = rawList.map(p => ({
-      id: p.id,
-      categoryId: p.categoryId,
-      category: p.category,
-      name: p.name,
-      description: p.description,
-      priceUsd: parseFloat(p.priceUsd) || 0,
-      barcode: p.barcode || undefined,
-      status: p.status || 'ACTIVE',
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt
-    }));
-
-    return {
-      data,
-      meta: res.meta || {
-        page: 1,
-        pageSize: data.length,
-        total: data.length,
-        totalPages: 1
-      }
-    };
-  },
+export interface PaginatedResponse<T> { data: T[]; meta: { page: number; pageSize: number; total: number; totalPages: number; }; } export const ProductService = { // Mantiene la compatibilidad con los componentes existentes async getAll(params?: { categoryId?: string; search?: string; status?: string; page?: number; pageSize?: number; }): Promise<Product[]> { const response = await this.getPaginated(params); return response.data; }, // Nuevo método para obtener productos y metadatos async getPaginated(params?: { categoryId?: string; search?: string; status?: string; page?: number; pageSize?: number; }): Promise<PaginatedResponse<Product>> { const q = new URLSearchParams(); if (params?.categoryId && params.categoryId !== "all") { q.set("categoryId", params.categoryId); } if (params?.search) q.set("search", params.search); if (params?.status) q.set("status", params.status); q.set("page", (params?.page ?? 1).toString()); q.set("pageSize", (params?.pageSize ?? 20).toString()); const res = await apiFetch<any>( `/api/products?${q.toString()}` ); const rawList: any[] = Array.isArray(res) ? res : res.data || res.products || []; const data: Product[] = rawList.map((p) => ({ id: p.id, categoryId: p.categoryId, category: p.category, name: p.name, description: p.description, priceUsd: parseFloat(p.priceUsd) || 0, barcode: p.barcode || undefined, status: p.status || "ACTIVE", createdAt: p.createdAt, updatedAt: p.updatedAt, })); return { data, meta: res.meta || { page: params?.page ?? 1, pageSize: params?.pageSize ?? data.length, total: data.length, totalPages: 1, }, }; }, };,
 
   async getById(id: string): Promise<Product> {
     const p = await apiFetch<any>(`/api/products/${id}`);
