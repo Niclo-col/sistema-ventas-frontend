@@ -124,12 +124,14 @@ const MainApp: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
+    
       <CurrencyProvider>
+        <AuthProvider>
         <CartProvider>
           <MainApp />
         </CartProvider>
+        </AuthProvider>
       </CurrencyProvider>
-    </AuthProvider>
+    
   );
 }

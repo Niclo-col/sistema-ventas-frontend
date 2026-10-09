@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { AuthService, getStoredToken } from '../services/api';
-
+import { useCurrency } from './CurrencyContext';
 interface AuthContextType {
   user: User | null;
   role: UserRole; // Real role of the logged in user
@@ -20,7 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [currentViewRole, setCurrentViewRole] = useState<UserRole>('SELLER');
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
+  const { syncWithBCV } = useCurrency();
   useEffect(() => {
     const initAuth = async () => {
       setIsLoading(true);
@@ -47,6 +47,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await AuthService.login(emailOrUser, pinOrPass);
       setUser(res.user);
       setCurrentViewRole(res.user.role);
+      try { 
+        await syncWithBCV(); 
+      } catch (error) {
+         console.error('No se pudo sincronizar la tasa BCV:', error); 
+        }
     } finally {
       setIsLoading(false);
     }
